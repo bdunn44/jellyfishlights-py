@@ -44,28 +44,32 @@ class PatternName:
 class JellyFishController:
     zones: Dict = {}
     patternFiles: List[PatternName] = []
-    __ws = websocket.WebSocket()
+    __getWs = websocket.WebSocket()
+    __setWs = websocket.WebSocket()
     __address: str
     __printJSON: bool
 
     def __init__(self, address: str, printJSON: bool = False):
-        self.__address = address
+        self.__address = f"ws://{address}:9000"
         self.__printJSON = printJSON
     
-    def __send(self, message: str):
+    def __send(self, ws, message: str):
         if self.__printJSON:
             print(f"Sending: {message}")
-        self.__ws.send(message)
+        ws.send(message)
 
-    def __recv(self):
-        message = self.__ws.recv()
+    def __recv(self, ws):
+        message = ws.recv()
         if self.__printJSON:
             print(f"Recieved: {message}")
+        # Controller occasionally responds with this "ledPower" message which should be ignored
+        if '"ledPower":' in message:
+            return __recv(ws)
         return message
     
     @property
     def connected(self) -> bool:
-        return self.__ws.connected
+        return self.__getWs.connected and self.__setWs.connected
 
     def getAndStorePatterns(self) -> List[PatternName]:
         """Returns and stores all the patterns from the controller"""
@@ -99,23 +103,33 @@ class JellyFishController:
 
     def __getData(self, data: List[str]) -> any:
         gd = GetData(cmd='toCtlrGet', get=[data])
-        self.__send(json.dumps(gd.to_dict()))
-        return json.loads(self.__recv())[data[0]]
+        self.__send(self.__getWs, json.dumps(gd.to_dict()))
+        return json.loads(self.__recv(self.__getWs))[data[0]]
     
     #Attempts to connect to a controller at the given address
     def connect(self):
         try:
-            self.__ws.connect(f"ws://{self.__address}:9000")
+            self.__getWs.connect(self.__address)
+            self.__setWs.connect(self.__address)
         except:
             raise BaseException("Could not connect to controller at " + self.__address)
         
     # Disconnects the web socket connection
     def disconnect(self):
+        errs = []
         try:
-            self.__ws.close()
-        except:
-            raise BaseException("Error encountered while disconnecting from controller at " + self.__address)
-
+            self.__getWs.close()
+        except BaseException as e:
+            errs.append(e)
+        try:
+            self.__setWs.close()
+        except BaseException as e:
+            errs.append(e)
+        if len(errs) > 0:
+            raise BaseException(errs)
+        self.__getWs = websocket.WebSocket()
+        self.__setWs = websocket.WebSocket()
+        
     #Attempts to connect to a controller at the given address and retrieve data
     def connectAndGetData(self):
         try:
@@ -125,7 +139,6 @@ class JellyFishController:
         except Exception as e:
             raise BaseException("Error connecting or getting data: ", e)
         
-
     def playPattern(self, pattern: str, zones: List[str] = None):
         rpc = RunPatternClass(
             state=1,
@@ -135,8 +148,7 @@ class JellyFishController:
         )
 
         rp = RunPattern(cmd="toCtlrSet", runPattern=rpc)
-        self.__send(json.dumps(rp.to_dict()))
-        self.__recv() # need to read the response even if doing nothing with the result
+        self.__send(self.__setWs, json.dumps(rp.to_dict()))
 
     def turnOnOff(self, turnOn: bool, zones: List[str] = None):
         zones = zones or list(self.zones.keys())
@@ -147,19 +159,7 @@ class JellyFishController:
         )
 
         rp = RunPattern(cmd="toCtlrSet", runPattern=rpc)
-        self.__send(json.dumps(rp.to_dict()))
-        # need to read the response even if doing nothing with the result
-        # on/off can return multiple responses, so ensure to read them all
-        zones = set(zones)
-        state = int(turnOn)
-        while True:
-            data = json.loads(self.__recv())
-            if  (
-                'runPattern' in data 
-                and data['runPattern']['state'] ==  state 
-                and set(data['runPattern']['zoneName']) == zones
-            ):
-                break
+        self.__send(self.__setWs, json.dumps(rp.to_dict()))
 
     def turnOn(self, zones: List[str] = None):
         self.turnOnOff(True, zones or list(self.zones.keys()))
@@ -183,8 +183,7 @@ class JellyFishController:
         )
 
         rp = RunPattern(cmd="toCtlrSet", runPattern=rpc)
-        self.__send(json.dumps(rp.to_dict()))
-        self.__recv() # need to read the response even if doing nothing with the result
+        self.__send(self.__setWs, json.dumps(rp.to_dict()))
 
     def sendColor(self, rgb: Tuple[int,int,int], brightness: int = 100, zones: List[str] = None):
         rd = RunData(speed=10, brightness=brightness, effect="No Effect", effectValue=0, rgbAdj=[100,100,100])
@@ -196,5 +195,4 @@ class JellyFishController:
         )
         
         rp = RunPattern(cmd="toCtlrSet", runPattern=rpc)
-        self.__send(json.dumps(rp.to_dict()))
-        self.__recv() # need to read the response even if doing nothing with the result
+        self.__send(self.__setWs, json.dumps(rp.to_dict()))
