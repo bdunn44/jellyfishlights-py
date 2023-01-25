@@ -49,7 +49,6 @@ class JellyFishController:
         self.patternFiles: List[PatternName] = []
         self.__getWs = websocket.WebSocket()
         self.__setWs = websocket.WebSocket()
-        self.__address = address
         self.__printJSON = printJSON
     
     def __send(self, ws, message: str):
@@ -61,9 +60,6 @@ class JellyFishController:
         message = ws.recv()
         if self.__printJSON:
             print(f"Recieved: {message}")
-        # Controller occasionally responds with this "ledPower" message which should be ignored
-        if '"ledPower":' in message:
-            return __recv(ws)
         return message
     
     @property
