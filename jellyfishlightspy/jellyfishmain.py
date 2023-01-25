@@ -42,15 +42,14 @@ class PatternName:
 #TODO: add a way to get the current pattern (runPattern)
 #TODO: add use of prebuilt pattern types
 class JellyFishController:
-    zones: Dict = {}
-    patternFiles: List[PatternName] = []
-    __getWs = websocket.WebSocket()
-    __setWs = websocket.WebSocket()
-    __address: str
-    __printJSON: bool
 
     def __init__(self, address: str, printJSON: bool = False):
         self.__address = f"ws://{address}:9000"
+        self.zones: Dict = {}
+        self.patternFiles: List[PatternName] = []
+        self.__getWs = websocket.WebSocket()
+        self.__setWs = websocket.WebSocket()
+        self.__address = address
         self.__printJSON = printJSON
     
     def __send(self, ws, message: str):
