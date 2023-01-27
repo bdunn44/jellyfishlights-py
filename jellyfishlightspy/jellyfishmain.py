@@ -87,7 +87,6 @@ class JellyFishController:
         try:
             if self.__printJSON:
                 print(f"Recieved: {message}")
-            raise Exception("it's really bad in here!")
             data = json.loads(message)
             if ZONE_DATA in data:
                 with self.__locks[ZONE_DATA]:
