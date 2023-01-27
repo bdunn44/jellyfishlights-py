@@ -5,7 +5,7 @@ import websocket
 import json
 import traceback
 from typing import Dict, List, Tuple
-from threading import Thread, Event, Lock, get_ident
+from threading import Thread, Event, Lock
 from jellyfishlightspy.runPattern import *
 from jellyfishlightspy.runPatternData import *
 from jellyfishlightspy.getData import *
@@ -48,7 +48,6 @@ RUN_PATTERN_DATA = "runPattern"
 class JellyFishController:
 
     def __init__(self, address: str, printJSON: bool = False):
-        print(f"main thread is {get_ident()}")
         self.zones: Dict = {}
         self.patternFiles: List[PatternName] = []
         self.runPatterns: Dict = {}
@@ -87,7 +86,6 @@ class JellyFishController:
     def __ws_on_message(self, ws, message):
         if self.__printJSON:
             print(f"Recieved: {message}")
-        print(f"on_message is in {get_ident()}")
         raise Exception("it's really bad in here!")
         data = json.loads(message)
         if ZONE_DATA in data:
@@ -111,9 +109,8 @@ class JellyFishController:
                 self.__triggerEvent(RUN_PATTERN_DATA, zone)
         
     def __ws_on_error(self, ws, error):
-        print(f"on_error is in {get_ident()}")
         print("Error encountered while processing websocket data!")
-        traceback.print_exc()
+        traceback.print_exc(error)
     
     def __send(self, message: str):
         if self.__printJSON:
