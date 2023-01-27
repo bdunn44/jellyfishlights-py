@@ -3,6 +3,7 @@
 
 import websocket
 import json
+import traceback
 from typing import Dict, List, Tuple
 from threading import Thread, Event, Lock, get_ident
 from jellyfishlightspy.runPattern import *
@@ -47,6 +48,7 @@ RUN_PATTERN_DATA = "runPattern"
 class JellyFishController:
 
     def __init__(self, address: str, printJSON: bool = False):
+        print(f"main thread is {get_ident()}")
         self.zones: Dict = {}
         self.patternFiles: List[PatternName] = []
         self.runPatterns: Dict = {}
@@ -110,7 +112,8 @@ class JellyFishController:
         
     def __ws_on_error(self, ws, error):
         print(f"on_error is in {get_ident()}")
-        print("Error encountered while processing websocket data: ", error)
+        print("Error encountered while processing websocket data!")
+        traceback.print_exc()
     
     def __send(self, message: str):
         if self.__printJSON:
@@ -149,7 +152,6 @@ class JellyFishController:
     def getRunPatterns(self, zones: List[str] = None, timeout = None) -> Dict[str, RunPatternClass]:
         """Returns and stores the state of specified zones"""
         zones = zones or list(self.zones.keys())
-        print(f"main thread is {get_ident()}")
         for zone in zones:
             self.__requestData([RUN_PATTERN_DATA, zone])
             self.__getRunPatternEvent(zone).wait(timeout)
