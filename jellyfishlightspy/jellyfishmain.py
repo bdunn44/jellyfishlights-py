@@ -72,9 +72,7 @@ class JellyFishController:
         return self.__events[RUN_PATTERN_DATA][zone]
     
     def __triggerEvent(self, dataKey, zone = None):
-        event = self.__events[dataKey]
-        if zone is not None:
-            event = event[zone]
+        event = self.__events[dataKey] if zone is None else self.__getRunPatternEvent(zone)
         event.set()
         event.clear()
     
@@ -85,28 +83,31 @@ class JellyFishController:
         self.__connected.clear()
     
     def __ws_on_message(self, ws, message):
-        if self.__printJSON:
-            print(f"Recieved: {message}")
-        data = json.loads(message)
-        if ZONE_DATA in data:
-            with self.__locks[ZONE_DATA]:
-                self.zones = data[ZONE_DATA]
-            self.__triggerEvent(ZONE_DATA)
-        elif PATTERN_LIST_DATA in data:
-            data = data[PATTERN_LIST_DATA]
-            with self.__locks[PATTERN_LIST_DATA]:
-                self.patternFiles = []
-                for patternFile in data:
-                    if patternFile["name"] != "":
-                        self.patternFiles.append(PatternName(patternFile["name"], patternFile["folders"]))
-            self.__triggerEvent(PATTERN_LIST_DATA)
-        elif RUN_PATTERN_DATA in data:
-            data = data[RUN_PATTERN_DATA]
-            if len(data["zoneName"]) == 1:
-                zone = data["zoneName"][0]
-                with self.__locks[RUN_PATTERN_DATA]:
-                    self.runPatterns[zone] = RunPatternClassFromDict(data)
-                self.__triggerEvent(RUN_PATTERN_DATA, zone)
+        try:
+            if self.__printJSON:
+                print(f"Recieved: {message}")
+            data = json.loads(message)
+            if ZONE_DATA in data:
+                with self.__locks[ZONE_DATA]:
+                    self.zones = data[ZONE_DATA]
+                self.__triggerEvent(ZONE_DATA)
+            elif PATTERN_LIST_DATA in data:
+                data = data[PATTERN_LIST_DATA]
+                with self.__locks[PATTERN_LIST_DATA]:
+                    self.patternFiles = []
+                    for patternFile in data:
+                        if patternFile["name"] != "":
+                            self.patternFiles.append(PatternName(patternFile["name"], patternFile["folders"]))
+                self.__triggerEvent(PATTERN_LIST_DATA)
+            elif RUN_PATTERN_DATA in data:
+                data = data[RUN_PATTERN_DATA]
+                if len(data["zoneName"]) == 1:
+                    zone = data["zoneName"][0]
+                    with self.__locks[RUN_PATTERN_DATA]:
+                        self.runPatterns[zone] = RunPatternClassFromDict(data)
+                    self.__triggerEvent(RUN_PATTERN_DATA, zone)
+        except e:
+            print("Error caught: ", e)
         
     def __ws_on_error(self, ws, error):
         print("Error encountered while processing websocket data: ", error)
