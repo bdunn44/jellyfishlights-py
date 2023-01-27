@@ -110,7 +110,7 @@ class JellyFishController:
         
     def __ws_on_error(self, ws, error):
         print("Error encountered while processing websocket data!")
-        traceback.print_exc(error)
+        traceback.print_exc()
     
     def __send(self, message: str):
         if self.__printJSON:
