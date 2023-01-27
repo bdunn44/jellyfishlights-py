@@ -107,6 +107,9 @@ class JellyFishController:
                 with self.__locks[RUN_PATTERN_DATA]:
                     self.runPatterns[zone] = RunPatternClassFromDict(data)
                 self.__triggerEvent(RUN_PATTERN_DATA, zone)
+        
+    def __ws_on_error(self, ws, error):
+        print("Error encountered while processing websocket data: ", error)
     
     def __send(self, message: str):
         if self.__printJSON:
@@ -158,7 +161,8 @@ class JellyFishController:
                 f"ws://{self.__address}:9000",
                 on_open = self.__ws_on_open,
                 on_close = self.__ws_on_close,
-                on_message = self.__ws_on_message
+                on_message = self.__ws_on_message,
+                on_error = self.__ws_on_error
             )
             self.__wsThread = Thread(target=lambda: self.__ws.run_forever(), daemon=True)
             self.__wsThread.start()
