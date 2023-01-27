@@ -84,33 +84,33 @@ class JellyFishController:
         self.__connected.clear()
     
     def __ws_on_message(self, ws, message):
-        if self.__printJSON:
-            print(f"Recieved: {message}")
-        raise Exception("it's really bad in here!")
-        data = json.loads(message)
-        if ZONE_DATA in data:
-            with self.__locks[ZONE_DATA]:
-                self.zones = data[ZONE_DATA]
-            self.__triggerEvent(ZONE_DATA)
-        elif PATTERN_LIST_DATA in data:
-            data = data[PATTERN_LIST_DATA]
-            with self.__locks[PATTERN_LIST_DATA]:
-                self.patternFiles = []
-                for patternFile in data:
-                    if patternFile["name"] != "":
-                        self.patternFiles.append(PatternName(patternFile["name"], patternFile["folders"]))
-            self.__triggerEvent(PATTERN_LIST_DATA)
-        elif RUN_PATTERN_DATA in data:
-            data = data[RUN_PATTERN_DATA]
-            if len(data["zoneName"]) == 1:
-                zone = data["zoneName"][0]
-                with self.__locks[RUN_PATTERN_DATA]:
-                    self.runPatterns[zone] = RunPatternClassFromDict(data)
-                self.__triggerEvent(RUN_PATTERN_DATA, zone)
-        
-    def __ws_on_error(self, ws, error):
-        print("Error encountered while processing websocket data!")
-        traceback.print_exc()
+        try:
+            if self.__printJSON:
+                print(f"Recieved: {message}")
+            raise Exception("it's really bad in here!")
+            data = json.loads(message)
+            if ZONE_DATA in data:
+                with self.__locks[ZONE_DATA]:
+                    self.zones = data[ZONE_DATA]
+                self.__triggerEvent(ZONE_DATA)
+            elif PATTERN_LIST_DATA in data:
+                data = data[PATTERN_LIST_DATA]
+                with self.__locks[PATTERN_LIST_DATA]:
+                    self.patternFiles = []
+                    for patternFile in data:
+                        if patternFile["name"] != "":
+                            self.patternFiles.append(PatternName(patternFile["name"], patternFile["folders"]))
+                self.__triggerEvent(PATTERN_LIST_DATA)
+            elif RUN_PATTERN_DATA in data:
+                data = data[RUN_PATTERN_DATA]
+                if len(data["zoneName"]) == 1:
+                    zone = data["zoneName"][0]
+                    with self.__locks[RUN_PATTERN_DATA]:
+                        self.runPatterns[zone] = RunPatternClassFromDict(data)
+                    self.__triggerEvent(RUN_PATTERN_DATA, zone)
+        except:
+            print("Error encountered while processing websocket data!")
+            traceback.print_exc()
     
     def __send(self, message: str):
         if self.__printJSON:
@@ -162,8 +162,7 @@ class JellyFishController:
                 f"ws://{self.__address}:9000",
                 on_open = self.__ws_on_open,
                 on_close = self.__ws_on_close,
-                on_message = self.__ws_on_message,
-                on_error = self.__ws_on_error
+                on_message = self.__ws_on_message
             )
             self.__wsThread = Thread(target=lambda: self.__ws.run_forever(), daemon=True)
             self.__wsThread.start()
